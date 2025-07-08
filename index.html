@@ -1,25 +1,732 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta property="og:locale" content="en_US"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:locale" content="en_US"/>
 <meta property="og:site_name" content="ToCo Design Rally"/>
 <meta property="og:title" content="ToCo Design Rally - Tompkins County New York"/>
 <meta property="og:url" content="https://www.tocodesignrally.com"/>
 <meta property="og:type" content="website"/>
 <meta property="og:image" content="https://www.tocodesignrally.com/card.jpg">
 <meta property="og:description" content="A meetup for area designers, HQ in Ithaca, New York"/>
-  <title>ToCo Design Rally</title>
-  <link rel="stylesheet" href="styles.css">
+    <title>ToCo Design Rally</title>
+    <style>
+
+:root {
+      --system-ui: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+        html {
+            box-sizing: border-box; /* Added for universal box-sizing */
+            overflow: hidden; /* Ensures no scrolling on html element */
+        }
+
+        *, *::before, *::after {
+            box-sizing: inherit; /* Inherit box-sizing for all elements */
+        }
+
+        body {
+          font-family: var(--system-ui);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Make body full viewport height */
+            width: 100vw; /* Make body full viewport width */
+            background-color: #1a1a1a; /* Dark background */
+            margin: 0;
+            padding: 0; /* Ensure no default body padding interferes */
+            perspective: 1000px; /* Establishes a 3D perspective for child elements */
+            overflow: hidden; /* Prevent body scrollbars from content overflow */
+            /* Removed opacity and transition here - body is always visible */
+        }
+
+        /* Preloader Styling */
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #fff; /* Match body background */
+            color: #999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            z-index: 9999; /* Ensure it's on top of everything */
+            opacity: 1; /* Always visible initially */
+            transition: opacity 0.5s ease; /* Smooth fade out */
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+
+        /* Content Wrapper Styling */
+        #content-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0; /* Initially hide the main content */
+            transition: opacity 0.5s ease-in-out; /* Smooth fade in */
+        }
+
+        /* Container for the list to control overall positioning */
+        .list-container {
+            position: relative;
+            width: 100vw; /* Take full viewport width */
+            height: 100vh; /* Take full viewport height */
+            padding: 0;
+            box-sizing: border-box;
+            overflow: visible; /* Essential for transformed children to not clip */
+        }
+
+        /* Unordered List Styling */
+        #card-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            position: relative;
+            width: 100vw; /* Take full viewport width */
+            height: 100vh; /* Take full viewport height */
+            transform-style: preserve-3d; /* Needed for 3D transforms on children */
+            overflow: visible; /* Essential for transformed children to not clip */
+            pointer-events: auto; /* Default to auto, managed by JS when card is active */
+        }
+
+        /* Individual List Item (Card) Styling */
+        .card {
+            width: 20vw; /* Responsive base width (e.g., 20% of viewport width) */
+            height: calc(20vw * (16 / 9)); /* Maintain 9:16 aspect ratio */
+            position: absolute;
+            background-color: transparent;
+            border-radius: 12px;
+            box-shadow: 0 1px 20px rgba(0, 0, 0, 0.3);
+            overflow: hidden; /* Hide overflow content initially */
+            cursor: pointer;
+            /* Transition for all properties including transform, filter */
+            transition: transform 0.3s ease,
+                        box-shadow 0.3s ease, z-index 0.3s ease,
+                        width 0.3s ease, height 0.3s ease,
+                        filter 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            backface-visibility: hidden;
+            transform-origin: center center; /* Ensure scaling is from the center */
+            
+            /* Add min-width/max-width to prevent cards from becoming too small/large on extreme viewports */
+            min-width: 150px; /* Minimum width */
+            max-width: 280px; /* Maximum width for unclicked cards */
+            min-height: calc(150px * (16 / 9));
+            max-height: calc(280px * (16 / 9));
+            
+            top: 50%;
+            left: 50%;
+            pointer-events: auto; /* Default to auto, specifically set to auto for active card */
+            transform: var(--card-base-transform); /* Base transform set by JS */
+        }
+
+        /* Hover effect for inactive cards */
+        .card:not(.clicked):hover {
+            transform: var(--card-base-transform) scale(1.1); /* Increased scale on hover */
+        }
+
+        /* Blur effect for inactive cards when another card is active */
+        .card.blurred {
+            filter: blur(5px);
+        }
+
+        /* Image Styling */
+        .card-image {
+            width: 100%;
+            height: 100%; /* Image fills the card initially */
+            object-fit: cover;
+            border-radius: 12px;
+            transition: height 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55),
+                        border-radius 0.3s ease;
+        }
+
+        /* Original .card-details styling, now largely overridden by #fixed-card-details */
+        .card-details {
+            display: none; /* Hide original card details */
+        }
+
+        /* Clicked Card State */
+        .card.clicked {
+            /* Responsive sizing based on viewport, aiming for a larger presence */
+            width: 95vmin; /* Increased to 95% of the smaller viewport dimension */
+            height: calc(95vmin * (16 / 9)); /* Maintain aspect ratio with new width */
+
+            /* Cap the size, ensuring it doesn't exceed 98vh or its corresponding width */
+            max-height: 95vh; /* Increased max-height to allow for larger scale */
+            max-width: calc(95vh * (9 / 16));
+            
+            /* Centering and Z-index remains. Removed explicit scale from transform. */
+            transform: translate(-50%, -50%) translateZ(1000px) !important;
+            z-index: 100;
+            overflow: hidden;
+            border-radius: 12px;
+            background-color: #1a1a1a; /* Ensure it's opaque when clicked */
+        }
+
+        .card.clicked .card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Ensure the image scales within the card's new responsive dimensions */
+            border-radius: 12px;
+        }
+
+        /* Fixed Card Details Panel */
+        #fixed-card-details {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 26vw; /* Occupy right 1/3 of the viewport */
+            min-width: 250px; /* Minimum width for details panel */
+            max-width: 300px; /* Maximum width for details panel */
+            height: 100vh;
+            background-color: transparent; /* Set background to transparent */
+            z-index: 150; /* Ensure it's above everything else */
+            padding: 40px 20px 0 0;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: start; /* Center content vertically */
+            align-items: left;
+            text-align: right;
+            color: #eee;
+            
+            /* Initial state: hidden off-screen to the right */
+            transform: translateX(100%);
+            opacity: 0;
+            pointer-events: none; /* Disable interaction when hidden */
+            
+            /* Smooth transition for entry/exit */
+            transition: transform 0.1s ease, opacity 0.5s ease-out;
+        }
+
+        #fixed-card-details.active-details {
+            transform: translateX(0); /* Slide in */
+            opacity: 1; /* Fade in */
+            pointer-events: auto; /* Enable interaction when active */
+        }
+
+        #fixed-card-details h3 {
+            
+            color: #aaa;
+        }
+
+        p {
+            margin-top: 0;
+        }
+
+        #fixed-card-details h3, #fixed-card-details p {
+            font-size: 14px; 
+            line-height: 1;
+            margin: 0 0 4px;        
+        }
+
+        #fixed-card-details .author-link {
+            color: #fff;
+            text-decoration: underline;
+            font-weight: bold;
+        }
+
+        #fixed-card-details .author-link:hover {
+            text-decoration: underline;
+        }
+
+        .close-details-btn {
+            position: absolute;
+            top: 0;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 2em;
+            color: #777;
+            cursor: pointer;
+            padding: 5px 10px;
+            line-height: 1;
+            transition: color 0.2s ease;
+        }
+
+        .close-details-btn:hover {
+            color: #fff;
+        }
+
+
+#home {
+position: fixed;
+z-index: 5;
+color: #ccc;
+left: 20px;
+width: 29%;
+bottom: 20px;
+}
+
+#home h1, #home h2, #home h3 { font-size: 14px; line-height: 1; margin: 0 0 5px;}
+
+#home h1 {
+    color: white;
+}
+
+#home a {
+  color: #fff;
+}
+
+#fixed-card-details p#details-date {
+  display: none;
+}
+
+/* New CSS for click-blocker */
+#click-blocker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99; /* Below fixed-card-details (150) and active card (100) */
+    pointer-events: none; /* Initially disabled */
+    /* background-color: rgba(0, 0, 0, 0.1); /* Optional: for debugging, make it slightly visible */
+}
+
+#home {
+    transition: 200ms all linear;
+}
+body.card-active #home { filter: blur(3px); opacity: .5; z-index: -1}
+
+/*responsive styles below ---------------------------------------------*/
+
+@media screen and (max-width: 1023px) {
+  html {
+    overflow: hidden;
+  }
+
+#fixed-card-details h3, #fixed-card-details p {
+margin: 0 6px 2px;
+font-size: 16px;
+}
+      #fixed-card-details.active-details {
+              display: flex;
+        width: 100%;
+        max-width: 100%;
+        flex-direction: row;
+        height: auto;
+        margin: 0;
+        padding: 2px;
+        align-items: center;
+        flex-direction: row-reverse;
+        justify-content: end;
+}
+
+.close-details-btn {
+    font-size: 39px;
+    padding: 10px;
+}
+
+.close-details-btn {
+    position: static;
+}
+
+    #home {
+    width: calc(100% - 40px);
+    }
+
+
+  .card.clicked {
+      width: 80vmin; /* Increased to 95% of the smaller viewport dimension */
+      height: calc(80vmin * (16 / 9)); /* Maintain aspect ratio with new width */
+      /* Cap the size, ensuring it doesn't exceed 98vh or its corresponding width */
+      max-height: 80vh; /* Increased max-height to allow for larger scale */
+      max-width: calc(80vh * (9 / 16));
+  }
+
+
+
+
+
+}
+
+    </style>
 </head>
-
 <body>
-  <section id="welcome">
-    <p>A graphic design meetup in Ithaca, NY.<br />Get our <a href="https://toco.kit.com/subscribe">newsletter</a>.  Join our <a href="https://discord.gg/CM5EaFAmPE">Discord</a>.<br /> 
-    Next: Thursday July 17 @ Greenstar Coop Cafe- 8:15am</p>
-  </section>
-</body>
+    <div id="preloader">...</div>
 
+    <!-- Main page content wrapper -->
+
+    <section id="home">
+      <h1>ToCo Design Rally</h1>
+      <h2>A graphic design meetup in Ithaca, NY.</h2>
+      <h3>Get our <a href="https://toco.kit.com/subscribe">newsletter</a>. Join our <a href="https://discord.gg/CM5EaFAmPE">Discord</a>.</h3>
+    </section>
+    <div id="content-wrapper">
+        <div class="list-container">
+            <ul id="card-list">
+                <!-- Card elements will be dynamically inserted here by JavaScript -->
+            </ul>
+            <!-- Click Blocker Overlay -->
+            <div id="click-blocker"></div>
+        </div>
+
+        <!-- Fixed Card Details Panel -->
+        <div id="fixed-card-details">
+            <button class="close-details-btn">&times;</button> <!-- Close button -->
+            <h3 id="details-title"></h3>
+            <p id="details-date"></p>
+            <p id="details-author"></p>
+        </div>
+    </div>
+
+    <script>
+        // Data to populate the cards on the page
+        const cardData = [
+            {
+                image: "posters/05-ToCo_july2025.jpg",
+                title: "05",
+                date: "July 17, 2025",
+                author: "Allison Usavage",
+                authorLink: "https://www.allisonusavage.com"
+            },
+            {
+                image: "posters/04-toco-june2025.jpg",
+                title: "04",
+                date: "June 12, 2025",
+                author: "Emily Lalande",
+                authorLink: "https://www.instagram.com/emilylalande/"
+            },
+            {
+                image: "posters/03-ToCo_may2025.jpg",
+                title: "03",
+                date: "May 15, 2025",
+                author: "Areya Muraca",
+                authorLink: "https://www.instagram.com/areyasunshine/"
+            },
+            {
+                image: "posters/02-ToCo_april2025.jpg",
+                title: "02",
+                date: "April 24, 2025",
+                author: "Stephanie Koelker",
+                authorLink: "https://www.linkedin.com/in/stephaniesnopek/"
+            },
+            {
+                image: "posters/01-toco-mar-2025.gif",
+                title: "01",
+                date: "March 20, 2025",
+                author: "Ty Finck",
+                authorLink: "https://www.tyfromtheinternet.com"
+            }
+        ];
+
+        // Get references to the DOM elements
+        const preloader = document.getElementById('preloader');
+        const contentWrapper = document.getElementById('content-wrapper');
+        const cardList = document.getElementById('card-list');
+        const fixedCardDetails = document.getElementById('fixed-card-details');
+        const detailsTitle = document.getElementById('details-title');
+        const detailsDate = document.getElementById('details-date');
+        const detailsAuthor = document.getElementById('details-author');
+        const closeDetailsBtn = document.querySelector('.close-details-btn');
+        const clickBlocker = document.getElementById('click-blocker'); // Get the new blocker element
+
+        // Define base multipliers for desktop
+        const desktopMinVerticalOffsetMultiplier = 5;
+        const desktopMaxVerticalOffsetMultiplier = 50;
+
+        // Define fixed multiplier for mobile for a larger, consistent gap
+        const mobileFixedVerticalOffsetMultiplier = 40; 
+
+        // Store the current dynamic rotateZ value for desktop
+        let currentRotateZ = -45; // Initial value for the far left
+
+        // Store the last known mouse position for desktop calculations on resize
+        let lastMouseX = window.innerWidth / 2;
+        let lastMouseY = window.innerHeight / 2;
+
+
+        /**
+         * Calculates the appropriate vertical offset multiplier based on mouse proximity for desktop.
+         * @param {number} mouseX - Current mouse X position.
+         * @param {number} mouseY - Current mouse Y position.
+         * @returns {number} The calculated vertical offset multiplier for desktop.
+         */
+        function calculateDesktopVerticalMultiplier(mouseX, mouseY) {
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            const normalizedX = Math.abs(mouseX - windowWidth / 2) / (windowWidth / 2);
+            const normalizedY = Math.abs(mouseY - windowHeight / 2) / (windowHeight / 2);
+            const combinedDistanceFactor = (normalizedX + normalizedY) / 2;
+
+            let multiplier = desktopMaxVerticalOffsetMultiplier - 
+                             (desktopMaxVerticalOffsetMultiplier - desktopMinVerticalOffsetMultiplier) * combinedDistanceFactor;
+            return Math.max(desktopMinVerticalOffsetMultiplier, Math.min(desktopMaxVerticalOffsetMultiplier, multiplier));
+        }
+
+        /**
+         * Applies the 3D transform to a card based on its index and viewport size.
+         * Sets this transform to a CSS variable.
+         * @param {HTMLElement} card - The card element to transform.
+         * @param {number} index - The index of the card in the list.
+         * @param {number} totalCards - The total number of cards.
+         */
+        function applyCardTransform(card, index, totalCards) {
+            const centerOffset = (totalCards - 1) / 2;
+            const defaultTranslateZ = index * 1; 
+            let transformString;
+
+            // Only apply transform if the card is NOT clicked
+            if (!card.classList.contains('clicked')) {
+                if (window.innerWidth <= 1023) {
+                    // Mobile view: Simplified 2D stack with fixed larger gap, no 3D rotations on stack
+                    const mobileVerticalOffset = (index - centerOffset) * mobileFixedVerticalOffsetMultiplier;
+                    transformString = `translate(-50%, -50%) translateY(${mobileVerticalOffset}px)`;
+                    card.style.zIndex = totalCards - index; // Z-index still applies for layering
+                } else {
+                    // Desktop view: Dynamic 3D stack with mouse interaction
+                    const desktopVerticalOffsetMultiplier = calculateDesktopVerticalMultiplier(lastMouseX, lastMouseY);
+                    const desktopVerticalOffset = (index - centerOffset) * desktopVerticalOffsetMultiplier;
+                    const rotateX = 50;
+                    transformString = `translate(-50%, -50%) translateY(${desktopVerticalOffset}px) rotateX(${rotateX}deg) rotateZ(${currentRotateZ}deg) translateZ(${defaultTranslateZ}px)`;
+                    card.style.zIndex = totalCards - index;
+                }
+                card.style.setProperty('--card-base-transform', transformString);
+            }
+        }
+
+        /**
+         * Updates all card transforms based on the current global multipliers and viewport state.
+         */
+        function updateAllCardTransforms() {
+            document.querySelectorAll('.card').forEach(card => {
+                const index = parseInt(card.dataset.index);
+                const totalCards = cardData.length;
+                applyCardTransform(card, index, totalCards);
+            });
+        }
+
+        // Populate the list with cards based on the cardData array
+        cardData.forEach((data, index) => {
+            const card = createCardElement(data, index, cardData.length);
+            cardList.appendChild(card);
+            // Initial application of transforms on load
+            applyCardTransform(card, index, cardData.length);
+        });
+
+        // Add event listener for mousemove on the document (only affects desktop behavior)
+        document.addEventListener('mousemove', (event) => {
+            lastMouseX = event.clientX;
+            lastMouseY = event.clientY;
+            if (window.innerWidth > 1023 && !document.querySelector('.card.clicked')) {
+                currentRotateZ = -45 + ((45 - (-45)) / (window.innerWidth - 0)) * (event.clientX - 0);
+                updateAllCardTransforms();
+            }
+        });
+
+        // Update transforms on window resize (to switch between mobile/desktop rules)
+        window.addEventListener('resize', () => {
+            // When resizing, update all transforms to apply correct mobile/desktop rules
+            updateAllCardTransforms();
+        });
+
+        /**
+         * Creates a single card element. The transform logic is handled by applyCardTransform.
+         * @param {Object} data - The data for the card (image, title, etc.).
+         * @param {number} index - The index of the card in the list.
+         * @param {number} totalCards - The total number of cards.
+         * @returns {HTMLElement} The created list item (card) element.
+         */
+        function createCardElement(data, index, totalCards) {
+            const li = document.createElement('li');
+            li.className = 'card';
+            li.dataset.index = index; // Store index to re-calculate transform later
+
+            // Populate inner HTML of the card - original details content is hidden via CSS
+            li.innerHTML = `
+                <img src="${data.image}" alt="${data.title}" class="card-image">
+                <div class="card-details">
+                    <h3 class="card-title">${data.title}</h3><p class="card-date">${data.date}</p><p class="card-author"><a href="${data.authorLink}" class="author-link">${data.author}</a></p>
+                </div>
+            `;
+            return li;
+        }
+
+        /**
+         * Handler for clicking an active card to close it.
+         * @param {Event} event - The click event.
+         */
+        function activeCardClickHandler(event) {
+            // Prevent the click from propagating to the parent cardList listener
+            event.stopPropagation(); 
+            closeCard(event.currentTarget); // event.currentTarget is the card itself
+        }
+
+        /**
+         * Closes a currently open card and restores its initial state.
+         * Also hides the fixed details panel.
+         * @param {HTMLElement} card - The card element to close.
+         */
+        function closeCard(card) {
+            if (card) { // Ensure a card is passed
+                card.classList.remove('clicked');
+                const index = parseInt(card.dataset.index);
+                const totalCards = cardData.length;
+                
+                // Reapply the base transform to the closed card
+                applyCardTransform(card, index, totalCards);
+
+                // Remove the specific click listener from this card
+                card.removeEventListener('click', activeCardClickHandler);
+
+                // Reset pointer-events for children of the card
+                const cardImage = card.querySelector('.card-image');
+                const cardDetails = card.querySelector('.card-details');
+                if (cardImage) cardImage.style.pointerEvents = '';
+                if (cardDetails) cardDetails.style.pointerEvents = '';
+            }
+            fixedCardDetails.classList.remove('active-details');
+            // Clear content of detail elements, but don't remove them from the DOM
+            detailsTitle.textContent = '';
+            detailsDate.textContent = '';
+            detailsAuthor.innerHTML = '';
+
+            // Remove blur from all cards when closing an active card
+            document.querySelectorAll('.card').forEach(c => {
+                c.classList.remove('blurred');
+            });
+
+            // Disable the click blocker
+            clickBlocker.style.pointerEvents = 'none';
+            // Remove 'card-active' class from body
+            document.body.classList.remove('card-active');
+        }
+
+        /**
+         * Opens a clicked card, bringing it to the front and displaying its details in a fixed panel.
+         * @param {HTMLElement} card - The card element to open.
+         */
+        function openCard(card) {
+            // Close any other currently open cards before opening a new one
+            document.querySelectorAll('.card.clicked').forEach(c => {
+                if (c !== card) { 
+                    closeCard(c);
+                }
+            });
+
+            card.classList.add('clicked');
+            card.style.zIndex = 100; // Ensure it's on top
+
+            // Enable the click blocker to prevent clicks on other cards
+            clickBlocker.style.pointerEvents = 'auto';
+
+            // Re-enable pointer events specifically for the active card and its children
+            card.style.pointerEvents = 'auto';
+            const cardImage = card.querySelector('.card-image');
+            const cardDetails = card.querySelector('.card-details');
+            if (cardImage) cardImage.style.pointerEvents = 'auto';
+            if (cardDetails) cardDetails.style.pointerEvents = 'auto';
+
+
+            // Add a specific click listener to the active card to close itself
+            card.addEventListener('click', activeCardClickHandler);
+
+
+            // Populate and show the fixed details panel
+            const cardIndex = parseInt(card.dataset.index);
+            const data = cardData[cardIndex];
+
+            detailsTitle.textContent = data.title;
+            detailsDate.textContent = data.date;
+            detailsAuthor.innerHTML = `<a href="${data.authorLink}" class="author-link">${data.author}</a>`;
+            
+            fixedCardDetails.classList.add('active-details');
+
+            // Apply blur to all other cards
+            document.querySelectorAll('.card').forEach(c => {
+                if (c !== card) {
+                    c.classList.add('blurred');
+                }
+            });
+            // Add 'card-active' class to body
+            document.body.classList.add('card-active');
+        }
+
+        // Event delegation for click handling on cards
+        cardList.addEventListener('click', (event) => {
+            const targetCard = event.target.closest('.card'); // Get the card element that was clicked
+
+            if (!targetCard) {
+                return; // Click was not on a card element
+            }
+
+            // Prevent the click from propagating further up the DOM, which could trigger the global listener
+            event.stopPropagation(); 
+
+            const currentlyActiveCard = document.querySelector('.card.clicked');
+
+            if (currentlyActiveCard) {
+                // If there's an active card
+                // The activeCardClickHandler will handle clicks on currentlyActiveCard
+                // This block handles clicks on *other* cards when one is already active
+                if (currentlyActiveCard !== targetCard) {
+                    closeCard(currentlyActiveCard);
+                    // Add a small delay to allow the closing transition to start before opening new one
+                    setTimeout(() => {
+                        openCard(targetCard);
+                    }, 100); 
+                }
+            } else {
+                // No card is currently active, so open the clicked card
+                openCard(targetCard);
+            }
+        });
+
+        // Add a global click listener to close the card and details panel when clicking outside
+        document.addEventListener('click', (event) => {
+            const currentlyOpenCard = document.querySelector('.card.clicked');
+            const clickedOnFixedDetails = event.target.closest('#fixed-card-details');
+            const clickedOnBlocker = event.target === clickBlocker; // Check if the blocker itself was clicked
+            
+            // If there's an open card AND the click was NOT on the active card AND NOT on the fixed details panel, close it
+            // Also, if the click was on the blocker, it means it was outside the active card/details panel
+            if (currentlyOpenCard && !currentlyOpenCard.contains(event.target) && !clickedOnFixedDetails && clickedOnBlocker) {
+                closeCard(currentlyOpenCard);
+            }
+        });
+
+        // Add event listener for the close button on the fixed details panel
+        closeDetailsBtn.addEventListener('click', () => {
+            const currentlyOpenCard = document.querySelector('.card.clicked');
+            if (currentlyOpenCard) {
+                closeCard(currentlyOpenCard);
+            }
+        });
+
+        // Add event listener for the fixed details panel itself to close if its transparent background is clicked
+        fixedCardDetails.addEventListener('click', (event) => {
+            // Check if the click target is the panel itself, not one of its children (like the close button)
+            if (event.target === fixedCardDetails) {
+                const currentlyOpenCard = document.querySelector('.card.clicked');
+                if (currentlyOpenCard) {
+                    closeCard(currentlyOpenCard);
+                }
+            }
+        });
+
+        // Preloader logic
+        window.addEventListener('load', () => {
+            // Simulate a minimum loading time for better user experience
+            setTimeout(() => {
+                preloader.style.opacity = '0';
+                preloader.addEventListener('transitionend', () => {
+                    preloader.style.display = 'none';
+                    contentWrapper.style.opacity = '1'; // Fade in the content wrapper
+                }, { once: true });
+            }, 500); // Minimum 500ms display for preloader
+        });
+    </script>
+</body>
 </html>
