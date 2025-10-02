@@ -51,6 +51,7 @@
             background-color: #fff; /* Match body background */
             color: #999;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             font-size: 14px;
@@ -60,6 +61,11 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             font-weight: bold;
+        }
+        
+        #preloader-progress {
+            margin-top: 10px;
+            font-size: 12px;
         }
 
         /* Content Wrapper Styling */
@@ -358,7 +364,10 @@ font-size: 16px;
     </style>
 </head>
 <body>
-    <div id="preloader">...</div>
+    <div id="preloader">
+        Loading...
+        <div id="preloader-progress">0%</div>
+    </div>
 
     <!-- Main page content wrapper -->
 
@@ -389,6 +398,13 @@ font-size: 16px;
         // Data to populate the cards on the page
         const cardData = [
             {
+                image: "posters/08-ToCo-Oct2025.gif",
+                title: "08",
+                date: "October 16, 2025",
+                author: "Ty Finck",
+                authorLink: "https://www.tyfromtheinternet.com"
+            },
+               {
                 image: "posters/07-ToCo-Sep2025-min.gif",
                 title: "07",
                 date: "September 18, 2025",
@@ -741,16 +757,41 @@ font-size: 16px;
             }
         });
 
-        // Preloader logic
-        window.addEventListener('load', () => {
-            // Simulate a minimum loading time for better user experience
+        // Preloader logic with image loading tracking
+        const imagesToLoad = cardData.map(data => data.image);
+        let imagesLoaded = 0;
+        const progressElement = document.getElementById('preloader-progress');
+        
+        // Preload all images
+        const imagePromises = imagesToLoad.map(src => {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    imagesLoaded++;
+                    const progress = Math.round((imagesLoaded / imagesToLoad.length) * 100);
+                    progressElement.textContent = `${progress}%`;
+                    resolve();
+                };
+                img.onerror = () => {
+                    imagesLoaded++;
+                    const progress = Math.round((imagesLoaded / imagesToLoad.length) * 100);
+                    progressElement.textContent = `${progress}%`;
+                    resolve(); // Resolve anyway to not block the loading
+                };
+                img.src = src;
+            });
+        });
+        
+        // Wait for all images to load
+        Promise.all(imagePromises).then(() => {
+            // Wait a moment after loading completes
             setTimeout(() => {
                 preloader.style.opacity = '0';
                 preloader.addEventListener('transitionend', () => {
                     preloader.style.display = 'none';
                     contentWrapper.style.opacity = '1'; // Fade in the content wrapper
                 }, { once: true });
-            }, 500); // Minimum 500ms display for preloader
+            }, 300);
         });
     </script>
 </body>
