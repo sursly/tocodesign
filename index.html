@@ -36,9 +36,9 @@
             background-color: #1a1a1a; /* Dark background */
             margin: 0;
             padding: 0; /* Ensure no default body padding interferes */
+            -webkit-perspective: 1000px;
             perspective: 1000px; /* Establishes a 3D perspective for child elements */
             overflow: hidden; /* Prevent body scrollbars from content overflow */
-            /* Removed opacity and transition here - body is always visible */
         }
 
         /* Preloader Styling */
@@ -75,8 +75,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            opacity: 0; /* Initially hide the main content */
-            transition: opacity 0.5s ease-in-out; /* Smooth fade in */
+            /* opacity left at default 1 — animating opacity here flattens preserve-3d in Safari */
         }
 
         /* Container for the list to control overall positioning */
@@ -97,7 +96,14 @@
             position: relative;
             width: 100vw; /* Take full viewport width */
             height: 100vh; /* Take full viewport height */
+            -webkit-transform-style: preserve-3d;
             transform-style: preserve-3d; /* Needed for 3D transforms on children */
+        }
+
+        /* When a card is active, drop preserve-3d so z-index controls stacking reliably (esp. Safari) */
+        #card-list.has-active-card {
+            -webkit-transform-style: flat;
+            transform-style: flat;
             overflow: visible; /* Essential for transformed children to not clip */
             pointer-events: auto; /* Default to auto, managed by JS when card is active */
         }
@@ -112,15 +118,17 @@
             box-shadow: 0 10px 25px rgba(26, 26, 26, 0.8);
              /* Hide overflow content initially */
             cursor: pointer;
+            touch-action: manipulation; /* Prevents tap delay on iOS Safari */
             /* Transition for all properties including transform, filter */
             transition: transform 0.2s ease,
-                        box-shadow 0.2s ease, z-index 0.2s ease,
+                        box-shadow 0.2s ease,
                         width 0.2s ease, height 0.2s ease,
                         filter 0.2s ease;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
+            -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
             transform-origin: center center; /* Ensure scaling is from the center */
             
@@ -172,8 +180,9 @@
             max-height: 95vh; /* Increased max-height to allow for larger scale */
             max-width: calc(95vh * (9 / 16));
             
-            /* Centering and Z-index remains. Removed explicit scale from transform. */
-            transform: translate(-50%, -50%) translateZ(500px); /* Using 500px, removed !important */
+            /* Small translateZ needed: inside preserve-3d, rendering order follows Z-depth, not z-index */
+            /* 30px is enough to clear all other cards (max ~12px) without extreme perspective distortion */
+            transform: translate(-50%, -50%) translateZ(30px);
             z-index: 100;
             overflow: hidden;
             border-radius: 12px;
@@ -585,13 +594,20 @@ font-size: 16px;
             applyCardTransform(card, index, cardData.length);
         });
 
-        // Add event listener for mousemove on the document (only affects desktop behavior)
+        // Throttle mousemove updates to once per animation frame to prevent jitter
+        let mouseMoveScheduled = false;
         document.addEventListener('mousemove', (event) => {
             lastMouseX = event.clientX;
             lastMouseY = event.clientY;
             if (window.innerWidth > 1023 && !document.querySelector('.card.clicked')) {
-                currentRotateZ = -45 + ((45 - (-45)) / (window.innerWidth - 0)) * (event.clientX - 0);
-                updateAllCardTransforms();
+                if (!mouseMoveScheduled) {
+                    mouseMoveScheduled = true;
+                    requestAnimationFrame(() => {
+                        currentRotateZ = -45 + (90 / window.innerWidth) * lastMouseX;
+                        updateAllCardTransforms();
+                        mouseMoveScheduled = false;
+                    });
+                }
             }
         });
 
@@ -674,6 +690,8 @@ font-size: 16px;
 
             // Disable the click blocker
             clickBlocker.style.pointerEvents = 'none';
+            // Restore preserve-3d for the fan effect
+            cardList.classList.remove('has-active-card');
             // Remove 'card-active' class from body
             document.body.classList.remove('card-active');
         }
@@ -692,6 +710,7 @@ font-size: 16px;
 
             card.classList.add('clicked');
             card.style.zIndex = 100; // Ensure it's on top
+            cardList.classList.add('has-active-card'); // Switch to flat stacking so z-index wins
             // The transform for the active state is now handled purely by CSS
 
 
@@ -824,7 +843,6 @@ font-size: 16px;
                 preloader.style.opacity = '0';
                 preloader.addEventListener('transitionend', () => {
                     preloader.style.display = 'none';
-                    contentWrapper.style.opacity = '1'; // Fade in the content wrapper
                 }, { once: true });
             }, 300);
         });
