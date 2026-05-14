@@ -48,8 +48,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #fff; /* Match body background */
-            color: #999;
+            background-color: #1a1a1a;
+            color: #666;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -123,7 +123,8 @@
             transition: transform 0.2s ease,
                         box-shadow 0.2s ease,
                         width 0.2s ease, height 0.2s ease,
-                        filter 0.2s ease;
+                        filter 0.2s ease,
+                        opacity 0.2s ease;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -318,56 +319,105 @@ body.card-active #home { filter: blur(5px); opacity: .25; z-index: -1}
 /*responsive styles below ---------------------------------------------*/
 
 @media screen and (max-width: 1023px) {
-  html {
-    overflow: hidden;
+  html, body {
+    overflow-y: auto;
+    height: auto;
   }
 
-#fixed-card-details h3, #fixed-card-details p {
-margin: 0 6px 2px;
-font-size: 16px;
-}
-      #fixed-card-details.active-details {
-              display: flex;
-        width: 100%;
-        max-width: 100%;
-        flex-direction: row;
-        height: auto;
-        margin: 0;
-        padding: 2px;
-        align-items: center;
-        flex-direction: row-reverse;
-        justify-content: end;
+  #home {
+position: absolute;
+
 }
 
-.close-details-btn {
+  body {
+    align-items: flex-start;
+    -webkit-perspective: none;
+    perspective: none;
+  }
+
+  #content-wrapper {
+    height: auto;
+  }
+
+  .list-container {
+    height: auto;
+  }
+
+  #card-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 91px 10px 20px;
+    height: auto;
+    -webkit-transform-style: flat;
+    transform-style: flat;
+  }
+
+  .card {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 9 / 16;
+    min-width: unset;
+    max-width: unset;
+    min-height: unset;
+    max-height: unset;
+  }
+
+  .card.blurred {
+    opacity: 0;
+  }
+
+  .card:not(.clicked):hover {
+    transform: scale(1.03);
+  }
+
+  .card.clicked {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 80vmin;
+    height: calc(80vmin * (16 / 9));
+    max-height: 80vh;
+    max-width: calc(80vh * (9 / 16));
+    transform: translate(-50%, -50%);
+  }
+
+  #click-blocker {
+    position: fixed;
+  }
+
+  #fixed-card-details h3, #fixed-card-details p {
+    margin: 0 6px 2px;
+    font-size: 16px;
+  }
+
+  #fixed-card-details.active-details {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 2px;
+    align-items: center;
+    flex-direction: row-reverse;
+    justify-content: end;
+  }
+
+  .close-details-btn {
     font-size: 39px;
     padding: 10px;
     margin-top: -7px;
-}
-
-.close-details-btn {
     position: static;
-}
+  }
 
-    #home {
+  #home {
     width: calc(100% - 40px);
     bottom: auto;
     top: 20px;
-    }
-
-
-  .card.clicked {
-      width: 80vmin; /* Increased to 95% of the smaller viewport dimension */
-      height: calc(80vmin * (16 / 9)); /* Maintain aspect ratio with new width */
-      /* Cap the size, ensuring it doesn't exceed 98vh or its corresponding width */
-      max-height: 80vh; /* Increased max-height to allow for larger scale */
-      max-width: calc(80vh * (9 / 16));
   }
-
-
-
-
-
 }
 
     </style>
@@ -573,10 +623,10 @@ font-size: 16px;
             // Only apply transform if the card is NOT clicked
             if (!card.classList.contains('clicked')) {
                 if (window.innerWidth <= 1023) {
-                    // Mobile view: Simplified 2D stack with fixed larger gap, no 3D rotations on stack
-                    const mobileVerticalOffset = (index - centerOffset) * mobileFixedVerticalOffsetMultiplier;
-                    transformString = `translate(-50%, -50%) translateY(${mobileVerticalOffset}px)`;
-                    card.style.zIndex = totalCards - index; // Z-index still applies for layering
+                    // Mobile view: 2-column CSS grid, no JS transforms needed
+                    card.style.setProperty('--card-base-transform', 'none');
+                    card.style.zIndex = '';
+                    return;
                 } else {
                     // Desktop view: Dynamic 3D stack with mouse interaction
                     const desktopVerticalOffsetMultiplier = calculateDesktopVerticalMultiplier(lastMouseX, lastMouseY);
